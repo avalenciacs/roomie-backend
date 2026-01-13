@@ -24,6 +24,9 @@ app.use("/auth", authRoutes);
 const flatRoutes = require("./routes/flat.routes");
 app.use("/api/flats", flatRoutes);
 
+const expenseRoutes = require("./routes/expense.routes");
+app.use("/api", expenseRoutes);
+
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 require("./error-handling")(app);
 
