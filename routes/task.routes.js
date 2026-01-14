@@ -4,7 +4,7 @@ const Task = require("../models/Task.model");
 const Flat = require("../models/Flat.model");
 const { isAuthenticated } = require("../middleware/jwt.middleware");
 
-// helper: comprobar si user es miembro del flat
+// helper: flat
 async function ensureMember(flatId, userId) {
   const flat = await Flat.findById(flatId);
   if (!flat) return { ok: false, status: 404, message: "Flat not found" };
@@ -15,7 +15,7 @@ async function ensureMember(flatId, userId) {
   return { ok: true, flat };
 }
 
-// CREATE task (por flat)
+// CREATE task  flat)
 router.post("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
   try {
     const { flatId } = req.params;
@@ -24,15 +24,16 @@ router.post("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     const check = await ensureMember(flatId, userId);
     if (!check.ok) return res.status(check.status).json({ message: check.message });
 
-    const { title, description, assignedTo, status, dueDate } = req.body;
+    const { title, description, assignedTo } = req.body;
 
+    
     const task = await Task.create({
       flat: flatId,
       title,
-      description,
+      description: description || "",
+      createdBy: userId,
       assignedTo: assignedTo || null,
-      status: status || "todo",
-      dueDate: dueDate || null,
+      status: "pending",
     });
 
     res.status(201).json(task);
@@ -52,6 +53,7 @@ router.get("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
 
     const tasks = await Task.find({ flat: flatId })
       .populate("assignedTo", "email")
+      .populate("createdBy", "email")
       .sort({ createdAt: -1 });
 
     res.json(tasks);
@@ -60,7 +62,8 @@ router.get("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
   }
 });
 
-// UPDATE task (title/description/assignedTo/status/dueDate)
+// UPDATE task
+
 router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
   try {
     const { taskId } = req.params;
@@ -72,8 +75,43 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
     const check = await ensureMember(task.flat, userId);
     if (!check.ok) return res.status(check.status).json({ message: check.message });
 
-    const updated = await Task.findByIdAndUpdate(taskId, req.body, { new: true })
-      .populate("assignedTo", "email");
+    const { assignedTo, status, title, description } = req.body;
+
+    
+    if (title !== undefined) task.title = title;
+    if (description !== undefined) task.description = description;
+
+    
+    if (assignedTo !== undefined) {
+     
+      if (task.assignedTo) {
+        return res.status(403).json({ message: "Task already assigned" });
+      }
+      if (String(assignedTo) !== String(userId)) {
+        return res.status(403).json({ message: "You can only assign tasks to yourself" });
+      }
+      task.assignedTo = assignedTo;
+  
+      task.status = "pending";
+    }
+
+    
+    if (status !== undefined) {
+      if (!task.assignedTo) {
+        return res.status(400).json({ message: "Task must be assigned before changing status" });
+      }
+      if (String(task.assignedTo) !== String(userId)) {
+        return res.status(403).json({ message: "Only the assignee can change status" });
+      }
+      // validación
+      task.status = status;
+    }
+
+    await task.save();
+
+    const updated = await Task.findById(taskId)
+      .populate("assignedTo", "email")
+      .populate("createdBy", "email");
 
     res.json(updated);
   } catch (error) {
@@ -81,7 +119,7 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
   }
 });
 
-// DELETE task
+// DELETE task (solo creador)
 router.delete("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
   try {
     const { taskId } = req.params;
@@ -92,6 +130,10 @@ router.delete("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
 
     const check = await ensureMember(task.flat, userId);
     if (!check.ok) return res.status(check.status).json({ message: check.message });
+
+    if (String(task.createdBy) !== String(userId)) {
+      return res.status(403).json({ message: "Only the creator can delete this task" });
+    }
 
     await Task.findByIdAndDelete(taskId);
     res.status(204).send();
