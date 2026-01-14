@@ -51,7 +51,7 @@ router.get("/flats/:flatId/expenses", isAuthenticated, async (req, res, next) =>
     if (!check.ok) return res.status(check.status).json({ message: check.message });
 
     const expenses = await Expense.find({ flat: flatId })
-      .populate("paidBy", "email")
+      .populate("paidBy", "name email")
       .populate("splitBetween", "email")
       .sort({ date: -1 });
 

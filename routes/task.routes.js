@@ -4,7 +4,6 @@ const Task = require("../models/Task.model");
 const Flat = require("../models/Flat.model");
 const { isAuthenticated } = require("../middleware/jwt.middleware");
 
-// helper: flat
 async function ensureMember(flatId, userId) {
   const flat = await Flat.findById(flatId);
   if (!flat) return { ok: false, status: 404, message: "Flat not found" };
@@ -15,7 +14,7 @@ async function ensureMember(flatId, userId) {
   return { ok: true, flat };
 }
 
-// CREATE task  flat)
+// CREATE task
 router.post("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
   try {
     const { flatId } = req.params;
@@ -26,7 +25,6 @@ router.post("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
 
     const { title, description, assignedTo } = req.body;
 
-    
     const task = await Task.create({
       flat: flatId,
       title,
@@ -36,7 +34,11 @@ router.post("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
       status: "pending",
     });
 
-    res.status(201).json(task);
+    const populated = await Task.findById(task._id)
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
+
+    res.status(201).json(populated);
   } catch (error) {
     next(error);
   }
@@ -52,8 +54,8 @@ router.get("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     if (!check.ok) return res.status(check.status).json({ message: check.message });
 
     const tasks = await Task.find({ flat: flatId })
-      .populate("assignedTo", "email")
-      .populate("createdBy", "email")
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email")
       .sort({ createdAt: -1 });
 
     res.json(tasks);
@@ -63,7 +65,9 @@ router.get("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
 });
 
 // UPDATE task
-
+// reglas:
+// - Assign: solo si está libre y solo para ti
+// - Start/Done: solo el assignedTo puede cambiar status
 router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
   try {
     const { taskId } = req.params;
@@ -77,25 +81,21 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
 
     const { assignedTo, status, title, description } = req.body;
 
-    
+    // Edición básica (MVP) - si quieres, lo limitamos al creador
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
 
-    
+    // Assign to me
     if (assignedTo !== undefined) {
-     
-      if (task.assignedTo) {
-        return res.status(403).json({ message: "Task already assigned" });
-      }
+      if (task.assignedTo) return res.status(403).json({ message: "Task already assigned" });
       if (String(assignedTo) !== String(userId)) {
         return res.status(403).json({ message: "You can only assign tasks to yourself" });
       }
       task.assignedTo = assignedTo;
-  
       task.status = "pending";
     }
 
-    
+    // Status change
     if (status !== undefined) {
       if (!task.assignedTo) {
         return res.status(400).json({ message: "Task must be assigned before changing status" });
@@ -103,15 +103,14 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
       if (String(task.assignedTo) !== String(userId)) {
         return res.status(403).json({ message: "Only the assignee can change status" });
       }
-      // validación
-      task.status = status;
+      task.status = status; // enum valida
     }
 
     await task.save();
 
     const updated = await Task.findById(taskId)
-      .populate("assignedTo", "email")
-      .populate("createdBy", "email");
+      .populate("assignedTo", "name email")
+      .populate("createdBy", "name email");
 
     res.json(updated);
   } catch (error) {

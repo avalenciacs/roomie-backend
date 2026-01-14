@@ -7,10 +7,7 @@ const taskSchema = new Schema(
     title: { type: String, required: true },
     description: { type: String, default: "" },
 
-    
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-
-    
     assignedTo: { type: Schema.Types.ObjectId, ref: "User", default: null },
 
     status: {
@@ -23,3 +20,4 @@ const taskSchema = new Schema(
 );
 
 module.exports = model("Task", taskSchema);
+
