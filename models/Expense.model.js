@@ -1,6 +1,7 @@
 const { Schema, model } = require("mongoose");
 
-const EXPENSE_CATEGORIES = [
+//
+const CATEGORY_ENUM = [
   "general",
   "rent",
   "food",
@@ -13,28 +14,31 @@ const EXPENSE_CATEGORIES = [
 
 const expenseSchema = new Schema(
   {
-    flat: { type: Schema.Types.ObjectId, ref: "Flat", required: true },
-
     title: { type: String, required: true, trim: true },
     amount: { type: Number, required: true, min: 0 },
 
+    paidBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    splitBetween: [{ type: Schema.Types.ObjectId, ref: "User" }],
+
+    date: { type: Date, default: Date.now },
+
+    //enum
     category: {
       type: String,
-      enum: EXPENSE_CATEGORIES,
+      enum: CATEGORY_ENUM,
       default: "general",
     },
 
-    paidBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    notes: { type: String, trim: true },
 
-    splitBetween: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
-
+    flat: { type: Schema.Types.ObjectId, ref: "Flat", required: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-
-    notes: { type: String, default: "", trim: true },
-    date: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
 
-module.exports = model("Expense", expenseSchema);
-module.exports.EXPENSE_CATEGORIES = EXPENSE_CATEGORIES;
+const Expense = model("Expense", expenseSchema);
+
+
+module.exports = Expense;
+module.exports.CATEGORY_ENUM = CATEGORY_ENUM;

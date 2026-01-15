@@ -1,5 +1,5 @@
-
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 
 const Expense = require("../models/Expense.model");
 const Flat = require("../models/Flat.model");
@@ -34,26 +34,26 @@ function validateExpensePayload(body) {
 router.post("/flats/:flatId/expenses", isAuthenticated, async (req, res, next) => {
   try {
     const { flatId } = req.params;
-    const userId = req.payload._id;
+    const userId = req.payload?._id;
 
-    const check = await ensureMember(flatId, userId);
-    if (!check.ok) return res.status(check.status).json({ message: check.message });
+    const { title, amount, category, paidBy, splitBetween, date, notes } = req.body;
 
-    const err = validateExpensePayload(req.body);
-    if (err) return res.status(400).json({ message: err });
+    const flat = await Flat.findById(flatId);
+    if (!flat) return res.status(404).json({ message: "Flat not found" });
 
-    const { title, amount, category, paidBy, splitBetween, notes, date } = req.body;
+    const isMember = flat.members?.some((m) => String(m) === String(userId));
+    if (!isMember) return res.status(403).json({ message: "Not allowed" });
 
     const expense = await Expense.create({
       flat: flatId,
       title,
-      amount: Number(amount),
+      amount,
       category: category || "general",
       paidBy,
       splitBetween,
+      date: date ? new Date(date) : undefined,
+      notes,
       createdBy: userId,
-      notes: notes || "",
-      date: date || Date.now(),
     });
 
     const populated = await Expense.findById(expense._id)
@@ -62,8 +62,8 @@ router.post("/flats/:flatId/expenses", isAuthenticated, async (req, res, next) =
       .populate("createdBy", "name email");
 
     res.status(201).json(populated);
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -88,7 +88,7 @@ router.get("/flats/:flatId/expenses", isAuthenticated, async (req, res, next) =>
   }
 });
 
-// UPDATE expense (MVP: solo creador)
+// UPDATE expense (solo creador)
 router.put("/expenses/:expenseId", isAuthenticated, async (req, res, next) => {
   try {
     const { expenseId } = req.params;
