@@ -33,6 +33,9 @@ app.use("/api", balanceRoutes);
 const taskRoutes = require("./routes/task.routes");
 app.use("/api", taskRoutes);
 
+const dashboardRoutes = require("./routes/dashboard.routes");
+app.use("/api", dashboardRoutes);
+
 // ❗ To handle errors. Routes that don't exist or errors that you handle in specific routes
 require("./error-handling")(app);
 
