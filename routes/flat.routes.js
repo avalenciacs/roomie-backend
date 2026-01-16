@@ -1,11 +1,10 @@
-
 const router = require("express").Router();
 const mongoose = require("mongoose");
 
 const Flat = require("../models/Flat.model");
 const User = require("../models/User.model");
 const Expense = require("../models/Expense.model");
-const Task = require("../models/Task.model"); 
+const Task = require("../models/Task.model");
 const { isAuthenticated } = require("../middleware/jwt.middleware");
 
 // ─────────────────────────
@@ -118,7 +117,10 @@ router.get("/:flatId/members", isAuthenticated, async (req, res, next) => {
       return res.status(403).json({ message: "Not allowed" });
     }
 
-    const populatedFlat = await Flat.findById(flatId).populate("members", "name email");
+    const populatedFlat = await Flat.findById(flatId).populate(
+      "members",
+      "name email"
+    );
     res.json(populatedFlat.members);
   } catch (error) {
     next(error);
@@ -159,7 +161,10 @@ router.post("/:flatId/members", isAuthenticated, async (req, res, next) => {
     flat.members.push(userToAdd._id);
     await flat.save();
 
-    const updatedFlat = await Flat.findById(flatId).populate("members", "name email");
+    const updatedFlat = await Flat.findById(flatId).populate(
+      "members",
+      "name email"
+    );
     res.json(updatedFlat);
   } catch (error) {
     next(error);
@@ -168,35 +173,44 @@ router.post("/:flatId/members", isAuthenticated, async (req, res, next) => {
 
 // REMOVE member (solo owner)
 // DELETE /api/flats/:flatId/members/:memberId
-router.delete("/:flatId/members/:memberId", isAuthenticated, async (req, res, next) => {
-  try {
-    const { flatId, memberId } = req.params;
-    const userId = req.payload._id;
+router.delete(
+  "/:flatId/members/:memberId",
+  isAuthenticated,
+  async (req, res, next) => {
+    try {
+      const { flatId, memberId } = req.params;
+      const userId = req.payload._id;
 
-    if (!isValidObjectId(flatId) || !isValidObjectId(memberId)) {
-      return res.status(400).json({ message: "Invalid id" });
+      if (!isValidObjectId(flatId) || !isValidObjectId(memberId)) {
+        return res.status(400).json({ message: "Invalid id" });
+      }
+
+      const flat = await Flat.findById(flatId);
+      if (!flat) return res.status(404).json({ message: "Flat not found" });
+
+      if (String(flat.owner) !== String(userId)) {
+        return res
+          .status(403)
+          .json({ message: "Only owner can remove members" });
+      }
+
+      if (String(memberId) === String(flat.owner)) {
+        return res.status(400).json({ message: "Owner cannot be removed" });
+      }
+
+      flat.members = flat.members.filter((m) => String(m) !== String(memberId));
+      await flat.save();
+
+      const updatedFlat = await Flat.findById(flatId).populate(
+        "members",
+        "name email"
+      );
+      res.json(updatedFlat);
+    } catch (error) {
+      next(error);
     }
-
-    const flat = await Flat.findById(flatId);
-    if (!flat) return res.status(404).json({ message: "Flat not found" });
-
-    if (String(flat.owner) !== String(userId)) {
-      return res.status(403).json({ message: "Only owner can remove members" });
-    }
-
-    if (String(memberId) === String(flat.owner)) {
-      return res.status(400).json({ message: "Owner cannot be removed" });
-    }
-
-    flat.members = flat.members.filter((m) => String(m) !== String(memberId));
-    await flat.save();
-
-    const updatedFlat = await Flat.findById(flatId).populate("members", "name email");
-    res.json(updatedFlat);
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 // ─────────────────────────
 // EXPENSES FlatDetails
@@ -213,7 +227,8 @@ router.get("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
     }
 
     const auth = await ensureMember(flatId, userId);
-    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+    if (!auth.ok)
+      return res.status(auth.status).json({ message: auth.message });
 
     const expenses = await Expense.find({ flat: flatId })
       .populate("paidBy", "name email")
@@ -238,7 +253,8 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
     }
 
     const auth = await ensureMember(flatId, userId);
-    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+    if (!auth.ok)
+      return res.status(auth.status).json({ message: auth.message });
 
     const {
       title,
@@ -246,7 +262,7 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
       paidBy,
       splitBetween,
       date,
-      category = "general", 
+      category = "general",
       notes = "",
     } = req.body;
 
@@ -256,7 +272,9 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
 
     const numericAmount = Number(amount);
     if (Number.isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({ message: "Amount must be a positive number" });
+      return res
+        .status(400)
+        .json({ message: "Amount must be a positive number" });
     }
 
     if (!paidBy || !isValidObjectId(paidBy)) {
@@ -274,7 +292,9 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
       return res.status(400).json({ message: "paidBy must be a flat member" });
     }
     if (split.some((id) => !memberSet.has(String(id)))) {
-      return res.status(400).json({ message: "splitBetween must contain only flat members" });
+      return res
+        .status(400)
+        .json({ message: "splitBetween must contain only flat members" });
     }
 
     const created = await Expense.create({
@@ -283,7 +303,7 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
       paidBy,
       splitBetween: split,
       date: date ? new Date(date) : new Date(),
-      category, 
+      category,
       notes: notes.trim(),
       flat: flatId,
       createdBy: userId,
@@ -315,7 +335,8 @@ router.get("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     }
 
     const auth = await ensureMember(flatId, userId);
-    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+    if (!auth.ok)
+      return res.status(auth.status).json({ message: auth.message });
 
     const tasks = await Task.find({ flat: flatId })
       .populate("assignedTo", "name email")
@@ -339,9 +360,15 @@ router.post("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     }
 
     const auth = await ensureMember(flatId, userId);
-    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+    if (!auth.ok)
+      return res.status(auth.status).json({ message: auth.message });
 
-    const { title, description = "", assignedTo = null, status = "pending" } = req.body;
+    const {
+      title,
+      description = "",
+      assignedTo = null,
+      status = "pending",
+    } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ message: "Title is required" });
@@ -354,7 +381,9 @@ router.post("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
       }
       const memberSet = new Set(auth.flat.members.map((m) => String(m)));
       if (!memberSet.has(String(assignedTo))) {
-        return res.status(400).json({ message: "assignedTo must be a flat member" });
+        return res
+          .status(400)
+          .json({ message: "assignedTo must be a flat member" });
       }
     }
 
@@ -378,7 +407,7 @@ router.post("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
 });
 
 // ─────────────────────────
-// BALANCE 
+// BALANCE
 // ─────────────────────────
 router.get("/:flatId/balance", isAuthenticated, async (req, res, next) => {
   try {

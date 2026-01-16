@@ -39,6 +39,5 @@ const expenseSchema = new Schema(
 
 const Expense = model("Expense", expenseSchema);
 
-
 module.exports = Expense;
 module.exports.CATEGORY_ENUM = CATEGORY_ENUM;

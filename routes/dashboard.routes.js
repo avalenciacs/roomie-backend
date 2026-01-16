@@ -31,10 +31,14 @@ router.get(
       const userId = req.payload._id;
 
       const check = await ensureMember(flatId, userId);
-      if (!check.ok) return res.status(check.status).json({ message: check.message });
+      if (!check.ok)
+        return res.status(check.status).json({ message: check.message });
 
       // Flat members
-      const flat = await Flat.findById(flatId).populate("members", "name email");
+      const flat = await Flat.findById(flatId).populate(
+        "members",
+        "name email"
+      );
 
       // Month range
       const { start, end } = getMonthRange(new Date());
@@ -63,7 +67,10 @@ router.get(
       });
 
       // Summary: month total
-      const monthTotal = monthExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
+      const monthTotal = monthExpenses.reduce(
+        (acc, e) => acc + Number(e.amount || 0),
+        0
+      );
 
       // Chart: byCategory
       const catMap = new Map();
@@ -90,7 +97,10 @@ router.get(
         const share = Number(exp.amount) / participants.length;
         const payerId = String(exp.paidBy?._id);
 
-        balanceMap.set(payerId, (balanceMap.get(payerId) || 0) + Number(exp.amount));
+        balanceMap.set(
+          payerId,
+          (balanceMap.get(payerId) || 0) + Number(exp.amount)
+        );
 
         for (const p of participants) {
           const pid = String(p._id);
@@ -113,7 +123,10 @@ router.get(
           membersCount: flat.members.length,
           monthTotal: Number(monthTotal.toFixed(2)),
           pendingTasksCount,
-          monthLabel: start.toLocaleString("en-US", { month: "long", year: "numeric" }),
+          monthLabel: start.toLocaleString("en-US", {
+            month: "long",
+            year: "numeric",
+          }),
         },
         recentExpenses,
         charts: {

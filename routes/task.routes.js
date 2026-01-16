@@ -21,7 +21,8 @@ router.post("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     const userId = req.payload._id;
 
     const check = await ensureMember(flatId, userId);
-    if (!check.ok) return res.status(check.status).json({ message: check.message });
+    if (!check.ok)
+      return res.status(check.status).json({ message: check.message });
 
     const { title, description, assignedTo } = req.body;
 
@@ -51,7 +52,8 @@ router.get("/flats/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     const userId = req.payload._id;
 
     const check = await ensureMember(flatId, userId);
-    if (!check.ok) return res.status(check.status).json({ message: check.message });
+    if (!check.ok)
+      return res.status(check.status).json({ message: check.message });
 
     const tasks = await Task.find({ flat: flatId })
       .populate("assignedTo", "name email")
@@ -77,7 +79,8 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const check = await ensureMember(task.flat, userId);
-    if (!check.ok) return res.status(check.status).json({ message: check.message });
+    if (!check.ok)
+      return res.status(check.status).json({ message: check.message });
 
     const { assignedTo, status, title, description } = req.body;
 
@@ -87,9 +90,12 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
 
     // Assign to me
     if (assignedTo !== undefined) {
-      if (task.assignedTo) return res.status(403).json({ message: "Task already assigned" });
+      if (task.assignedTo)
+        return res.status(403).json({ message: "Task already assigned" });
       if (String(assignedTo) !== String(userId)) {
-        return res.status(403).json({ message: "You can only assign tasks to yourself" });
+        return res
+          .status(403)
+          .json({ message: "You can only assign tasks to yourself" });
       }
       task.assignedTo = assignedTo;
       task.status = "pending";
@@ -98,10 +104,14 @@ router.put("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
     // Status change
     if (status !== undefined) {
       if (!task.assignedTo) {
-        return res.status(400).json({ message: "Task must be assigned before changing status" });
+        return res
+          .status(400)
+          .json({ message: "Task must be assigned before changing status" });
       }
       if (String(task.assignedTo) !== String(userId)) {
-        return res.status(403).json({ message: "Only the assignee can change status" });
+        return res
+          .status(403)
+          .json({ message: "Only the assignee can change status" });
       }
       task.status = status; // enum valida
     }
@@ -128,10 +138,13 @@ router.delete("/tasks/:taskId", isAuthenticated, async (req, res, next) => {
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const check = await ensureMember(task.flat, userId);
-    if (!check.ok) return res.status(check.status).json({ message: check.message });
+    if (!check.ok)
+      return res.status(check.status).json({ message: check.message });
 
     if (String(task.createdBy) !== String(userId)) {
-      return res.status(403).json({ message: "Only the creator can delete this task" });
+      return res
+        .status(403)
+        .json({ message: "Only the creator can delete this task" });
     }
 
     await Task.findByIdAndDelete(taskId);

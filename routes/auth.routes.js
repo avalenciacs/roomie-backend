@@ -13,12 +13,16 @@ router.post("/signup", async (req, res, next) => {
     const { email, password, name } = req.body;
 
     if (email === "" || password === "" || name === "") {
-      return res.status(400).json({ message: "Provide email, password and name" });
+      return res
+        .status(400)
+        .json({ message: "Provide email, password and name" });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ message: "Provide a valid email address." });
+      return res
+        .status(400)
+        .json({ message: "Provide a valid email address." });
     }
 
     const passwordRegex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
@@ -37,9 +41,17 @@ router.post("/signup", async (req, res, next) => {
     const salt = bcrypt.genSaltSync(saltRounds);
     const hashedPassword = bcrypt.hashSync(password, salt);
 
-    const createdUser = await User.create({ email, password: hashedPassword, name });
+    const createdUser = await User.create({
+      email,
+      password: hashedPassword,
+      name,
+    });
 
-    const user = { _id: createdUser._id, email: createdUser.email, name: createdUser.name };
+    const user = {
+      _id: createdUser._id,
+      email: createdUser.email,
+      name: createdUser.name,
+    };
     return res.status(201).json({ user });
   } catch (err) {
     next(err);
@@ -61,10 +73,16 @@ router.post("/login", async (req, res, next) => {
 
     const passwordCorrect = bcrypt.compareSync(password, foundUser.password);
     if (!passwordCorrect) {
-      return res.status(401).json({ message: "Unable to authenticate the user" });
+      return res
+        .status(401)
+        .json({ message: "Unable to authenticate the user" });
     }
 
-    const payload = { _id: foundUser._id, email: foundUser.email, name: foundUser.name };
+    const payload = {
+      _id: foundUser._id,
+      email: foundUser.email,
+      name: foundUser.name,
+    };
 
     const authToken = jwt.sign(payload, process.env.TOKEN_SECRET, {
       algorithm: "HS256",
