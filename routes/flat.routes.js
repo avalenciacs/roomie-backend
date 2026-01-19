@@ -96,6 +96,81 @@ router.get("/:flatId", isAuthenticated, async (req, res, next) => {
 });
 
 // ─────────────────────────
+// UPDATE flat (solo owner) 
+// PUT /api/flats/:flatId
+// ─────────────────────────
+router.put("/:flatId", isAuthenticated, async (req, res, next) => {
+  try {
+    const { flatId } = req.params;
+    const userId = req.payload._id;
+    const { name, description } = req.body;
+
+    if (!isValidObjectId(flatId)) {
+      return res.status(400).json({ message: "Invalid flat id" });
+    }
+
+    const flat = await Flat.findById(flatId);
+    if (!flat) return res.status(404).json({ message: "Flat not found" });
+
+    if (String(flat.owner) !== String(userId)) {
+      return res.status(403).json({ message: "Only owner can edit the flat" });
+    }
+
+    // Validación básica
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      flat.name = name.trim();
+    }
+
+    if (description !== undefined) {
+      flat.description = (description || "").trim();
+    }
+
+    await flat.save();
+
+    const populated = await Flat.findById(flatId).populate("members", "name email");
+    res.json(populated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────
+// DELETE flat (solo owner) 
+// DELETE /api/flats/:flatId
+// ─────────────────────────
+router.delete("/:flatId", isAuthenticated, async (req, res, next) => {
+  try {
+    const { flatId } = req.params;
+    const userId = req.payload._id;
+
+    if (!isValidObjectId(flatId)) {
+      return res.status(400).json({ message: "Invalid flat id" });
+    }
+
+    const flat = await Flat.findById(flatId);
+    if (!flat) return res.status(404).json({ message: "Flat not found" });
+
+    if (String(flat.owner) !== String(userId)) {
+      return res.status(403).json({ message: "Only owner can delete the flat" });
+    }
+
+    // Limpieza de dependencias
+    await Promise.all([
+      Expense.deleteMany({ flat: flatId }),
+      Task.deleteMany({ flat: flatId }),
+      Flat.findByIdAndDelete(flatId),
+    ]);
+
+    res.json({ message: "Flat deleted" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ─────────────────────────
 // MEMBERS
 // ─────────────────────────
 
@@ -374,7 +449,7 @@ router.post("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
       return res.status(400).json({ message: "Title is required" });
     }
 
-    // validar  miembro
+    // validar miembro
     if (assignedTo) {
       if (!isValidObjectId(assignedTo)) {
         return res.status(400).json({ message: "assignedTo invalid" });
