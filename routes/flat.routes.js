@@ -389,7 +389,6 @@ router.get("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
   }
 });
 
-// POST /api/flats/:flatId/expenses (solo miembros)
 router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
   try {
     const { flatId } = req.params;
@@ -400,8 +399,7 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
     }
 
     const auth = await ensureMember(flatId, userId);
-    if (!auth.ok)
-      return res.status(auth.status).json({ message: auth.message });
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
     const {
       title,
@@ -411,6 +409,7 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
       date,
       category = "general",
       notes = "",
+      imageUrl = "", // ✅ FIX: SIEMPRE definido
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -452,6 +451,7 @@ router.post("/:flatId/expenses", isAuthenticated, async (req, res, next) => {
       date: date ? new Date(date) : new Date(),
       category,
       notes: notes.trim(),
+      imageUrl: String(imageUrl || "").trim(), // ✅ OK
       flat: flatId,
       createdBy: userId,
     });
@@ -507,14 +507,14 @@ router.post("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
     }
 
     const auth = await ensureMember(flatId, userId);
-    if (!auth.ok)
-      return res.status(auth.status).json({ message: auth.message });
+    if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
 
     const {
       title,
       description = "",
       assignedTo = null,
       status = "pending",
+      imageUrl = "", // ✅ FIX: SIEMPRE definido
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -539,6 +539,7 @@ router.post("/:flatId/tasks", isAuthenticated, async (req, res, next) => {
       description: description.trim(),
       assignedTo,
       status,
+      imageUrl: String(imageUrl || "").trim(), // ✅ OK
       flat: flatId,
       createdBy: userId,
     });

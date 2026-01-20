@@ -1,6 +1,6 @@
-const { Schema, model } = require("mongoose");
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
 
-//
 const CATEGORY_ENUM = [
   "general",
   "rent",
@@ -22,14 +22,11 @@ const expenseSchema = new Schema(
 
     date: { type: Date, default: Date.now },
 
-    //enum
-    category: {
-      type: String,
-      enum: CATEGORY_ENUM,
-      default: "general",
-    },
+    category: { type: String, enum: CATEGORY_ENUM, default: "general" },
+    notes: { type: String, trim: true, default: "" },
 
-    notes: { type: String, trim: true },
+    // ✅ opcional
+    imageUrl: { type: String, default: "" },
 
     flat: { type: Schema.Types.ObjectId, ref: "Flat", required: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -37,7 +34,8 @@ const expenseSchema = new Schema(
   { timestamps: true }
 );
 
-const Expense = model("Expense", expenseSchema);
+// ✅ evita OverwriteModelError en hot reload
+const Expense = mongoose.models.Expense || mongoose.model("Expense", expenseSchema);
 
 module.exports = Expense;
 module.exports.CATEGORY_ENUM = CATEGORY_ENUM;

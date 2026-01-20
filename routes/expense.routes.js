@@ -31,46 +31,51 @@ function validateExpensePayload(body) {
 }
 
 // CREATE expense
-router.post(
-  "/flats/:flatId/expenses",
-  isAuthenticated,
-  async (req, res, next) => {
-    try {
-      const { flatId } = req.params;
-      const userId = req.payload?._id;
+// CREATE expense
+router.post("/flats/:flatId/expenses", isAuthenticated, async (req, res, next) => {
+  try {
+    const { flatId } = req.params;
+    const userId = req.payload._id;
 
-      const { title, amount, category, paidBy, splitBetween, date, notes } =
-        req.body;
+    // si tienes ensureMember aquí, úsalo:
+    // const check = await ensureMember(flatId, userId);
+    // if (!check.ok) return res.status(check.status).json({ message: check.message });
 
-      const flat = await Flat.findById(flatId);
-      if (!flat) return res.status(404).json({ message: "Flat not found" });
+    const {
+      title,
+      amount,
+      paidBy,
+      splitBetween = [],
+      date,
+      category = "general",
+      notes = "",
+      imageUrl = "", // ✅ opcional
+    } = req.body;
 
-      const isMember = flat.members?.some((m) => String(m) === String(userId));
-      if (!isMember) return res.status(403).json({ message: "Not allowed" });
+    const expense = await Expense.create({
+      flat: flatId,
+      createdBy: userId,
+      title: String(title || "").trim(),
+      amount: Number(amount),
+      paidBy,
+      splitBetween: Array.isArray(splitBetween) ? splitBetween : [],
+      date: date ? new Date(date) : new Date(),
+      category,
+      notes: String(notes || "").trim(),
+      imageUrl: String(imageUrl || ""),
+    });
 
-      const expense = await Expense.create({
-        flat: flatId,
-        title,
-        amount,
-        category: category || "general",
-        paidBy,
-        splitBetween,
-        date: date ? new Date(date) : undefined,
-        notes,
-        createdBy: userId,
-      });
+    const populated = await Expense.findById(expense._id)
+      .populate("paidBy", "name email")
+      .populate("splitBetween", "name email")
+      .populate("createdBy", "name email");
 
-      const populated = await Expense.findById(expense._id)
-        .populate("paidBy", "name email")
-        .populate("splitBetween", "name email")
-        .populate("createdBy", "name email");
-
-      res.status(201).json(populated);
-    } catch (err) {
-      next(err);
-    }
+    res.status(201).json(populated);
+  } catch (err) {
+    next(err);
   }
-);
+});
+
 
 // READ expenses by flat
 router.get(
