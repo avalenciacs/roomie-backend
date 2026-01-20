@@ -7,6 +7,10 @@ const Expense = require("../models/Expense.model");
 const Task = require("../models/Task.model");
 const { isAuthenticated } = require("../middleware/jwt.middleware");
 
+const crypto = require("crypto");
+const Invitation = require("../models/Invitation.model");
+const { sendInviteEmail } = require("../utils/mailer");
+
 // ─────────────────────────
 // Helpers
 // ─────────────────────────
@@ -286,6 +290,74 @@ router.delete(
     }
   }
 );
+
+
+// ─────────────────────────
+// INVITATIONS (solo owner)
+// POST /api/flats/:flatId/invitations
+// ─────────────────────────
+router.post("/:flatId/invitations", isAuthenticated, async (req, res, next) => {
+  try {
+    const { flatId } = req.params;
+    const userId = req.payload._id;
+    const email = String(req.body.email || "").trim().toLowerCase();
+
+    if (!isValidObjectId(flatId)) {
+      return res.status(400).json({ message: "Invalid flat id" });
+    }
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const flat = await Flat.findById(flatId);
+    if (!flat) return res.status(404).json({ message: "Flat not found" });
+
+    if (String(flat.owner) !== String(userId)) {
+      return res.status(403).json({ message: "Only owner can invite members" });
+    }
+
+    // Si el usuario existe y ya es miembro -> no invites
+    const existingUser = await User.findOne({ email });
+    if (
+      existingUser &&
+      flat.members.map(String).includes(String(existingUser._id))
+    ) {
+      return res.status(400).json({ message: "User is already a member" });
+    }
+
+    const expiresHours = Number(process.env.INVITE_EXPIRES_HOURS || 72);
+
+    // Genera token y guarda hash
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    const invite = await Invitation.create({
+      flat: flatId,
+      email,
+      tokenHash,
+      invitedBy: userId,
+      status: "pending",
+      expiresAt: new Date(Date.now() + expiresHours * 3600 * 1000),
+    });
+
+    const inviteUrl = `${process.env.FRONTEND_URL}/invite?token=${rawToken}`;
+
+    await sendInviteEmail({
+      to: email,
+      flatName: flat.name,
+      inviterName: req.payload.name || req.payload.email || "",
+      inviteUrl,
+    });
+
+    res.status(201).json({
+      message: "Invitation sent",
+      expiresAt: invite.expiresAt,
+      inviteId: invite._id,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ─────────────────────────
 // EXPENSES FlatDetails

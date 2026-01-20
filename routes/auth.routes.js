@@ -1,12 +1,53 @@
+// IMPORTANT: adds "accept pending invitations by email" after signup
 const express = require("express");
 const router = express.Router();
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
+
 const User = require("../models/User.model");
+const Flat = require("../models/Flat.model");
+const Invitation = require("../models/Invitation.model");
 const { isAuthenticated } = require("../middleware/jwt.middleware.js");
 
 const saltRounds = 10;
+
+async function acceptPendingInvitesForEmail({ userId, email }) {
+  const cleanEmail = (email || "").toLowerCase().trim();
+  if (!cleanEmail) return;
+
+  const pending = await Invitation.find({
+    email: cleanEmail,
+    status: "pending",
+    expiresAt: { $gt: new Date() },
+  }).lean();
+
+  if (!pending.length) return;
+
+  // Add user to each flat
+  const flatIds = [...new Set(pending.map((i) => String(i.flat)))].filter((id) =>
+    mongoose.Types.ObjectId.isValid(id)
+  );
+
+  // push membership (idempotent)
+  await Flat.updateMany(
+    { _id: { $in: flatIds } },
+    { $addToSet: { members: userId } }
+  );
+
+  // mark invitations accepted
+  await Invitation.updateMany(
+    { _id: { $in: pending.map((i) => i._id) } },
+    {
+      $set: {
+        status: "accepted",
+        acceptedBy: userId,
+        acceptedAt: new Date(),
+      },
+    }
+  );
+}
 
 router.post("/signup", async (req, res, next) => {
   try {
@@ -33,7 +74,9 @@ router.post("/signup", async (req, res, next) => {
       });
     }
 
-    const foundUser = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+
+    const foundUser = await User.findOne({ email: cleanEmail });
     if (foundUser) {
       return res.status(400).json({ message: "User already exists." });
     }
@@ -42,9 +85,15 @@ router.post("/signup", async (req, res, next) => {
     const hashedPassword = bcrypt.hashSync(password, salt);
 
     const createdUser = await User.create({
-      email,
+      email: cleanEmail,
       password: hashedPassword,
-      name,
+      name: name.trim(),
+    });
+
+    //  Auto-accept pending invitations for this email
+    await acceptPendingInvitesForEmail({
+      userId: createdUser._id,
+      email: createdUser.email,
     });
 
     const user = {
@@ -52,6 +101,7 @@ router.post("/signup", async (req, res, next) => {
       email: createdUser.email,
       name: createdUser.name,
     };
+
     return res.status(201).json({ user });
   } catch (err) {
     next(err);
@@ -66,7 +116,9 @@ router.post("/login", async (req, res, next) => {
       return res.status(400).json({ message: "Provide email and password." });
     }
 
-    const foundUser = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+
+    const foundUser = await User.findOne({ email: cleanEmail });
     if (!foundUser) {
       return res.status(401).json({ message: "User not found." });
     }
