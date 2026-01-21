@@ -1,4 +1,3 @@
-// IMPORTANT: adds "accept pending invitations by email" after signup
 const express = require("express");
 const router = express.Router();
 
@@ -25,18 +24,15 @@ async function acceptPendingInvitesForEmail({ userId, email }) {
 
   if (!pending.length) return;
 
-  // Add user to each flat
   const flatIds = [...new Set(pending.map((i) => String(i.flat)))].filter((id) =>
     mongoose.Types.ObjectId.isValid(id)
   );
 
-  // push membership (idempotent)
   await Flat.updateMany(
     { _id: { $in: flatIds } },
     { $addToSet: { members: userId } }
   );
 
-  // mark invitations accepted
   await Invitation.updateMany(
     { _id: { $in: pending.map((i) => i._id) } },
     {
@@ -53,7 +49,7 @@ router.post("/signup", async (req, res, next) => {
   try {
     const { email, password, name } = req.body;
 
-    if (email === "" || password === "" || name === "") {
+    if (!email || !password || !name) {
       return res
         .status(400)
         .json({ message: "Provide email, password and name" });
@@ -74,7 +70,7 @@ router.post("/signup", async (req, res, next) => {
       });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = String(email).trim().toLowerCase();
 
     const foundUser = await User.findOne({ email: cleanEmail });
     if (foundUser) {
@@ -87,10 +83,9 @@ router.post("/signup", async (req, res, next) => {
     const createdUser = await User.create({
       email: cleanEmail,
       password: hashedPassword,
-      name: name.trim(),
+      name: String(name).trim(),
     });
 
-    //  Auto-accept pending invitations for this email
     await acceptPendingInvitesForEmail({
       userId: createdUser._id,
       email: createdUser.email,
@@ -112,22 +107,38 @@ router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    if (email === "" || password === "") {
+    // Robust validation (prevents email.trim() crashing)
+    if (!email || !password) {
       return res.status(400).json({ message: "Provide email and password." });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = String(email).trim().toLowerCase();
 
     const foundUser = await User.findOne({ email: cleanEmail });
     if (!foundUser) {
       return res.status(401).json({ message: "User not found." });
     }
 
-    const passwordCorrect = bcrypt.compareSync(password, foundUser.password);
+    if (!foundUser.password) {
+      return res.status(500).json({ message: "User has no password set." });
+    }
+
+    const passwordCorrect = await bcrypt.compare(
+      String(password),
+      foundUser.password
+    );
+
     if (!passwordCorrect) {
       return res
         .status(401)
         .json({ message: "Unable to authenticate the user" });
+    }
+
+    if (!process.env.TOKEN_SECRET) {
+      // This is the #1 cause of 500 in Vercel for login
+      return res
+        .status(500)
+        .json({ message: "Missing TOKEN_SECRET on server." });
     }
 
     const payload = {
