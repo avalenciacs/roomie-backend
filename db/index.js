@@ -5,8 +5,8 @@ const MONGO_URI =
 
 mongoose
   .connect(MONGO_URI, {
-    dbName: "roomie",        
-    serverSelectionTimeoutMS: 10000
+    dbName: "roomie",                
+    serverSelectionTimeoutMS: 10000,
   })
   .then((x) => {
     console.log(
