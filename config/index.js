@@ -1,30 +1,40 @@
 // We reuse this import in order to have access to the `body` property in requests
 const express = require("express");
 
-// ℹ️ Responsible for the messages you see in the terminal as requests are coming in
+// Responsible for the messages you see in the terminal as requests are coming in
 // https://www.npmjs.com/package/morgan
 const logger = require("morgan");
 
-// ℹ️ Needed when we deal with cookies (we will when dealing with authentication)
+// Needed when we deal with cookies (we will when dealing with authentication)
 // https://www.npmjs.com/package/cookie-parser
 const cookieParser = require("cookie-parser");
 
-// ℹ️ Needed to accept requests from 'the outside'. CORS stands for cross origin resource sharing
-// unless the request is made from the same domain, by default express wont accept POST requests
+// Needed to accept requests from 'the outside'. CORS stands for cross origin resource sharing
 const cors = require("cors");
 
-const FRONTEND_URL = process.env.ORIGIN || "http://localhost:3000";
+// Allowed origins (prod + dev)
+const allowedOrigins = [
+  process.env.ORIGIN,          // e.g. https://roomie-home.vercel.app
+  process.env.CLIENT_URL,      // optional (same as ORIGIN)
+  "http://localhost:5173"      // Vite dev
+].filter(Boolean);
 
-// Middleware configuration
 module.exports = (app) => {
-  // Because this will be hosted on a server that will accept requests from outside and it will be hosted ona server with a `proxy`, express needs to know that it should trust that setting.
-  // Services like Fly use something called a proxy and you need to add this to your server
+  // Trust proxy (useful on Vercel / proxies)
   app.set("trust proxy", 1);
 
-  // controls a very specific header to pass headers from the frontend
+  // CORS
   app.use(
     cors({
-      origin: [FRONTEND_URL],
+      origin: (origin, cb) => {
+        // Allow requests with no origin (Postman, server-to-server)
+        if (!origin) return cb(null, true);
+
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+
+        return cb(new Error(`CORS blocked: ${origin}`));
+      },
+      credentials: true,
     })
   );
 
