@@ -1,23 +1,24 @@
 const nodemailer = require("nodemailer");
 
-function createTransporter() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const secure = String(process.env.SMTP_SECURE || "false") === "true";
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,        // ✅ obligatorio para 587
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS, // APP PASSWORD
+  },
+  requireTLS: true,
+});
 
-  if (!host || !user || !pass) {
-    throw new Error("SMTP env vars missing (SMTP_HOST/SMTP_USER/SMTP_PASS)");
+// Opcional pero recomendado para debug
+transporter.verify((err) => {
+  if (err) {
+    console.error("SMTP verification failed:", err);
+  } else {
+    console.log("SMTP ready");
   }
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-  });
-}
+});
 
 function escapeHtml(str) {
   return String(str || "")
@@ -30,7 +31,6 @@ function escapeHtml(str) {
 
 async function sendInviteEmail({ to, flatName, inviterName, inviteUrl }) {
   const from = process.env.MAIL_FROM || process.env.SMTP_USER;
-  const transporter = createTransporter();
 
   const subject = `Roomie invitation: join "${flatName}"`;
 
@@ -40,15 +40,11 @@ async function sendInviteEmail({ to, flatName, inviterName, inviteUrl }) {
     "",
     `Open this link to join:`,
     inviteUrl,
-    "",
-    `If you don't have an account, create one with this email (${to}) and you will be added automatically.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].join("\n");
 
   const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.4;">
-      <h2 style="margin: 0 0 12px;">You're invited to Roomie</h2>
+    <div style="font-family: Arial, sans-serif;">
+      <h2>You're invited to Roomie</h2>
       <p>You have been invited to join <b>${escapeHtml(flatName)}</b>.</p>
       ${
         inviterName
@@ -56,14 +52,10 @@ async function sendInviteEmail({ to, flatName, inviterName, inviteUrl }) {
           : ""
       }
       <p>
-        <a href="${inviteUrl}" style="display:inline-block;padding:10px 14px;border-radius:10px;background:#0f172a;color:white;text-decoration:none;">
+        <a href="${inviteUrl}"
+           style="padding:10px 14px;border-radius:10px;background:#0f172a;color:white;text-decoration:none;">
           Accept invitation
         </a>
-      </p>
-      <p style="color:#64748b;font-size:12px;">
-        If you don't have an account, create one with this email (${escapeHtml(
-          to
-        )}) and you will be added automatically.
       </p>
     </div>
   `;
