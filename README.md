@@ -30,7 +30,7 @@ Web Development Student – Ironhack
 ## 📁 Project Structure
 
 
-
+```
 src/
 │
 ├── api/ # Axios configuration
@@ -53,7 +53,7 @@ src/
 ├── main.jsx
 └── index.css
 
-
+```
 ---
 
 ## 🔐 Authentication
