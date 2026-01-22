@@ -116,8 +116,3 @@ Suitable for live demos (Ironhack presentations)
 📄 License
 This project was developed for educational purposes as part of the Ironhack Web Development Bootcamp.
 
-Optimized for clarity and usability rather than feature overload.
-
-📄 License
-
-This project was created for educational purposes as part of the Ironhack Web Development Bootcamp.
