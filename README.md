@@ -1,108 +1,100 @@
-📦 Backend – Roomie API
-🏠 Roomie Backend
+📱 ROOMIE – Frontend
+# Roomie – Frontend
 
-Backend REST API for Roomie, a shared-flat management application where users can manage members, expenses, tasks, balances and invitations.
+Roomie is a web application that helps people living in shared flats manage **members, expenses, tasks and balances** in a simple and visual way.
 
-Built with Node.js, Express, and MongoDB Atlas, deployed on Vercel.
+This repository contains the **frontend** of the Roomie project, built with React and deployed on Vercel.
 
-🚀 Features
+🔗 Live demo: https://roomie-home.vercel.app
 
-JWT authentication (signup, login, verify)
+---
 
-Flats management (create, edit, delete)
+## 👤 Author
 
-Members & invitations by email
+**Anderson Valencia Castaño**  
+Web Development Student – Ironhack
 
-Shared expenses with balances
+---
 
-Tasks management (assign, progress, complete)
+## 🚀 Tech Stack
 
-Email invitations (Nodemailer + Gmail SMTP)
+- React (Vite)
+- React Router DOM
+- Axios
+- Tailwind CSS
+- Context API
+- Vercel (deployment)
 
-File uploads with Cloudinary
+---
 
-Optimized aggregated endpoints
+## 📁 Project Structure
 
-🧱 Tech Stack
 
-Node.js
 
-Express
+src/
+│
+├── api/ # Axios configuration
+├── assets/ # Static assets
+├── components/ # Reusable UI components
+│ ├── ui/ # Base UI elements
+│ ├── ExpenseForm.jsx
+│ ├── TaskForm.jsx
+│ ├── FlatDashboard.jsx
+│ ├── FlatTopNav.jsx
+│ ├── Header.jsx
+│ ├── IsPrivate.jsx
+│ └── ResponsiveLayout.jsx
+│
+├── constants/ # Categories, enums, helpers
+├── context/ # Auth & Toast contexts
+├── pages/ # Application pages
+│
+├── App.jsx
+├── main.jsx
+└── index.css
 
-MongoDB + Mongoose
 
-JWT Authentication
+---
 
-Nodemailer
+## 🔐 Authentication
 
-Cloudinary
+- Token-based authentication (JWT)
+- Tokens are stored in `localStorage`
+- Protected routes handled with `IsPrivate`
 
-Vercel
+---
 
-📁 Project Structure
-backend/
-│── app.js
-│── db/
-│   └── index.js
-│── routes/
-│   ├── auth.routes.js
-│   ├── flat.routes.js
-│   ├── expense.routes.js
-│   ├── task.routes.js
-│   ├── invitations.routes.js
-│── controllers/
-│── models/
-│── middleware/
-│── config/
+## 🌐 Environment Variables
 
-🔐 Environment Variables
+Create a `.env` file in the root:
 
-Create a .env file:
+```env
+VITE_API_URL=https://your-backend-url.vercel.app
 
-PORT=5005
-ORIGIN=http://localhost:5173
-CLIENT_URL=http://localhost:5173
-
-MONGODB_URI=your_mongodb_atlas_uri
-TOKEN_SECRET=your_jwt_secret
-
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your_email@gmail.com
-SMTP_PASS=your_app_password
-MAIL_FROM=Roomie <your_email@gmail.com>
-
-CLOUDINARY_CLOUD_NAME=xxxx
-CLOUDINARY_API_KEY=xxxx
-CLOUDINARY_API_SECRET=xxxx
-
-▶️ Running Locally
+▶️ Run Locally
 npm install
 npm run dev
 
+📌 Features
 
-Backend will run on:
+Flat management
 
-http://localhost:5005
+Member invitations via email
 
-🌐 Deployment
+Shared expenses with categories and receipts
 
-Deployed on Vercel
+Task assignment and tracking
 
-MongoDB hosted on MongoDB Atlas
+Automatic balance calculation
 
-Environment variables configured in Vercel dashboard
+Responsive mobile-first design
 
-🧠 Design Notes
+🧪 Notes
 
-MongoDB connection is reused to avoid cold-start overhead
+No code is shown in slides during presentations (demo-first approach).
 
-Heavy queries optimized using countDocuments and aggregated endpoints
+Optimized for clarity and usability rather than feature overload.
 
-Secure routes protected with JWT middleware
+📄 License
 
-📌 Author
-
-Roomie – Ironhack Web Development Bootcamp
-Backend project
+This project was created for educational purposes as part of the Ironhack Web Development Bootcamp.
